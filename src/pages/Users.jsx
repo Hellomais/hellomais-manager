@@ -3,8 +3,11 @@ import { useEvent } from '../contexts/EventContext';
 import { Search, ChevronUp, ChevronDown, PlusCircle, Pencil, Trash2 } from 'lucide-react';
 import UserFormModal from '../components/users/UserFormModal';
 import DeleteUserDialog from '../components/users/DeleteUserDialog';
+import toast from 'react-hot-toast';
 
 export default function Users() {
+  // Hooks - devem ficar no topo do componente
+  const { selectedEvent } = useEvent();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,7 +16,6 @@ export default function Users() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const { selectedEvent } = useEvent();
 
   useEffect(() => {
     fetchUsers();
@@ -51,6 +53,36 @@ export default function Users() {
       key,
       direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
+  };
+
+  const handleResetPassword = async (userId) => {
+    const loadingToast = toast.loading('Enviando nova senha...');
+    
+    try {
+      console.log('Enviando reset de senha para userId:', userId);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('https://dev-api.hellomais.com.br/users/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'x-event-id': selectedEvent.id.toString()
+        },
+        body: JSON.stringify({ userId: userId })
+      });
+
+      console.log('Resposta:', response);
+
+      if (!response.ok) {
+        throw new Error('Erro ao enviar nova senha');
+      }
+
+      toast.success('Nova senha enviada com sucesso!', { id: loadingToast });
+    } catch (error) {
+      console.error('Erro ao resetar senha:', error);
+      toast.error(error.message || 'Erro ao enviar nova senha', { id: loadingToast });
+    }
   };
 
   const filteredAndSortedUsers = users
@@ -162,6 +194,9 @@ export default function Users() {
                     </div>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Senha
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
@@ -199,6 +234,16 @@ export default function Users() {
                           'bg-green-100 text-green-800'}`}>
                         {user.role}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.role === 'manager' && (
+                        <button
+                          onClick={() => handleResetPassword(user.id)}
+                          className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                          Enviar Senha
+                        </button>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-3">

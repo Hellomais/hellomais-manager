@@ -44,7 +44,7 @@ function Dashboard() {
 
   const menuItems = [
     { icon: Users, label: 'Usuários', path: '/dashboard/users' },
-    { icon: Calendar, label: 'Eventos', path: '/dashboard/events' },
+    { icon: Calendar, label: 'Salas', path: '/dashboard/rooms' },
     { icon: ImagePlus, label: 'Banners', path: '/dashboard/banners' },
     { icon: Instagram, label: 'Instagram', path: '/dashboard/instagram' },
     { icon: MessageSquare, label: 'Mural', path: '/dashboard/mural' },
