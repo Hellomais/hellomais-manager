@@ -20,7 +20,7 @@ const LANGUAGES = [
 const STATUS_OPTIONS = [
   { value: 'ONLINE', label: 'Online' },
   { value: 'WAITING', label: 'Aguardando' },
-  { value: 'CLOSED', label: 'Fechado' }
+  { value: 'FINISHED', label: 'Fechado' }
 ];
 
 // Componente de Tab

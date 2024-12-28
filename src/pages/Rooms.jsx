@@ -201,7 +201,7 @@ function Rooms() {
                       >
                         <option value="ONLINE">ONLINE</option>
                         <option value="WAITING">WAITING</option>
-                        <option value="CLOSED">CLOSED</option>
+                        <option value="FINISHED">FINISHED</option>
                       </select>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
