@@ -1,11 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { EventProvider } from './contexts/EventContext';
 import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
-import Rooms from './pages/Rooms';
-import RoomForm from './pages/RoomForm';
+import RoomsList from './pages/Rooms/List';
+import RoomForm from './pages/Rooms/Form';
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -22,13 +22,9 @@ export default function App() {
       <Router>
         <Routes>
           <Route path="/" element={<Login />} />
-          <Route path="/dashboard" element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }>
+          <Route path="/dashboard" element={<Dashboard />}>
             <Route path="users" element={<Users />} />
-            <Route path="rooms" element={<Rooms />} />
+            <Route path="rooms" element={<RoomsList />} />
             <Route path="rooms/new" element={<RoomForm />} />
             <Route path="rooms/:id/edit" element={<RoomForm />} />
           </Route>
