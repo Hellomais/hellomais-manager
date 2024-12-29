@@ -125,12 +125,20 @@ export default function SchedulesTab() {
       const formattedData = {
         startDateTime: formData.startDateTime || "",
         endDateTime: formData.endDateTime || "",
-        translations: {
-          [selectedLanguage]: {
-            title: formData.translations[selectedLanguage]?.title || "",
-            description: formData.translations[selectedLanguage]?.description || ""
-          }
-        }
+        translations: editingSchedule?.id 
+          // Para edição: objeto com chaves de idioma
+          ? {
+              [selectedLanguage]: {
+                title: formData.translations[selectedLanguage]?.title || "",
+                description: formData.translations[selectedLanguage]?.description || ""
+              }
+            }
+          // Para criação: array com objeto de tradução
+          : [{
+              language: selectedLanguage,
+              title: formData.translations[selectedLanguage]?.title || "",
+              description: formData.translations[selectedLanguage]?.description || ""
+            }]
       };
 
       const response = await fetch(url, {
