@@ -153,7 +153,7 @@ export default function RoomsList() {
                       <Trash2 size={18} />
                     </button>
                     <button
-                      onClick={() => navigate(`/dashboard/rooms/${room.id}/manage`)}
+                      onClick={() => navigate(`/dashboard/rooms/${room.id}/administration`)}
                       className="text-purple-600 hover:text-purple-800"
                     >
                       <Settings size={18} />
