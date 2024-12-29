@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { PinIcon, Send, Clock } from 'lucide-react';
+import { PinIcon, Send, Clock, EyeOff, Eye } from 'lucide-react';
 
 export default function RoomAdministration() {
   const { id: roomId } = useParams();
   const [newMessage, setNewMessage] = useState('');
+  const [hiddenMessages, setHiddenMessages] = useState(new Set());
+  const [pinnedMessages, setPinnedMessages] = useState(new Set());
 
   // Dados mockados para exemplo
   const viewers = [
@@ -14,10 +16,14 @@ export default function RoomAdministration() {
   ];
 
   const messages = [
-    { id: 1, user: 'João Silva', message: 'Excelente apresentação!', time: '10:15', isPinned: false },
+    { id: 1, user: 'João Silva', message: 'Excelente apresentação!', time: '10:15' },
     { id: 2, user: 'Admin', message: 'Obrigado a todos pela participação!', time: '10:16', isManager: true },
-    { id: 3, user: 'Maria Santos', message: 'Quando teremos a próxima live?', time: '10:17', isPinned: true },
+    { id: 3, user: 'Maria Santos', message: 'Quando teremos a próxima live?', time: '10:17' },
   ];
+
+  // Separar mensagens pinadas e não pinadas
+  const pinnedMessagesList = messages.filter(msg => pinnedMessages.has(msg.id));
+  const regularMessagesList = messages.filter(msg => !pinnedMessages.has(msg.id));
 
   const handleSendMessage = (e) => {
     e.preventDefault();
@@ -26,8 +32,70 @@ export default function RoomAdministration() {
   };
 
   const handlePinMessage = (messageId) => {
-    // Lógica para fixar/desafixar mensagem
+    setPinnedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
   };
+
+  const handleToggleMessageVisibility = (messageId) => {
+    setHiddenMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  // Componente de Mensagem para evitar duplicação de código
+  const MessageComponent = ({ message, isPinned = false }) => (
+    <div
+      className={`p-3 rounded-lg ${
+        isPinned ? 'bg-yellow-50 border border-yellow-200' :
+        message.isManager ? 'bg-blue-50' : 'bg-gray-50'
+      }`}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className={`font-medium ${message.isManager ? 'text-blue-600' : 'text-gray-900'}`}>
+          {message.user}
+        </span>
+        <div className="flex items-center space-x-2">
+          <span className="text-xs text-gray-500">{message.time}</span>
+          {!message.isManager && (
+            <>
+              <button
+                onClick={() => handleToggleMessageVisibility(message.id)}
+                className={`p-1 rounded hover:bg-gray-200 transition-colors ${
+                  hiddenMessages.has(message.id) ? 'text-red-500' : 'text-gray-400'
+                }`}
+                title={hiddenMessages.has(message.id) ? "Mensagem oculta" : "Ocultar mensagem"}
+              >
+                {hiddenMessages.has(message.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+              <button
+                onClick={() => handlePinMessage(message.id)}
+                className={`p-1 rounded hover:bg-gray-200 transition-colors ${
+                  pinnedMessages.has(message.id) ? 'text-yellow-500' : 'text-gray-400'
+                }`}
+                title={pinnedMessages.has(message.id) ? "Mensagem fixada" : "Fixar mensagem"}
+              >
+                <PinIcon size={14} className={pinnedMessages.has(message.id) ? 'rotate-45' : ''} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      <p className="text-sm text-gray-700">{message.message}</p>
+    </div>
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
@@ -88,37 +156,29 @@ export default function RoomAdministration() {
             <h2 className="text-lg font-semibold">Chat</h2>
           </div>
 
-          {/* Mensagens */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-4 max-h-[600px]">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`p-3 rounded-lg ${
-                  message.isPinned ? 'bg-yellow-50 border border-yellow-200' :
-                  message.isManager ? 'bg-blue-50' : 'bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className={`font-medium ${message.isManager ? 'text-blue-600' : 'text-gray-900'}`}>
-                    {message.user}
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-500">{message.time}</span>
-                    {!message.isManager && (
-                      <button
-                        onClick={() => handlePinMessage(message.id)}
-                        className={`p-1 rounded hover:bg-gray-200 ${
-                          message.isPinned ? 'text-yellow-500' : 'text-gray-400'
-                        }`}
-                      >
-                        <PinIcon size={14} />
-                      </button>
-                    )}
-                  </div>
+          {/* Container de Mensagens */}
+          <div className="flex-1 overflow-y-auto max-h-[600px]">
+            {/* Seção de Mensagens Pinadas */}
+            {pinnedMessagesList.length > 0 && (
+              <div className="bg-yellow-50/50 p-4 border-b border-yellow-200">
+                <div className="flex items-center gap-2 text-yellow-600 mb-2">
+                  <PinIcon size={16} className="rotate-45" />
+                  <span className="text-sm font-medium">Mensagens Fixadas</span>
                 </div>
-                <p className="text-sm text-gray-700">{message.message}</p>
+                <div className="space-y-2">
+                  {pinnedMessagesList.map(message => (
+                    <MessageComponent key={message.id} message={message} isPinned={true} />
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* Mensagens Regulares */}
+            <div className="p-4 space-y-4">
+              {regularMessagesList.map(message => (
+                <MessageComponent key={message.id} message={message} />
+              ))}
+            </div>
           </div>
 
           {/* Input de mensagem */}
