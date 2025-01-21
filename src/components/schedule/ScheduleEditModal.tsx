@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import React, { useState } from "react";
+import { X, Plus, Trash2 } from "lucide-react";
 
 interface Translation {
   language: string;
@@ -20,11 +20,11 @@ interface ScheduleEditModalProps {
     startDateTime: string;
     endDateTime: string;
     translations: {
-      'pt-BR': {
+      "pt-BR": {
         title: string;
         description: string;
       };
-      'es-ES': {
+      "es-ES": {
         title: string;
         description: string;
       };
@@ -34,28 +34,40 @@ interface ScheduleEditModalProps {
       position: string;
     }>;
   };
-  onSave: (scheduleId: number, data: {
-    startDateTime: string;
-    endDateTime: string;
-    translations: Translation[];
-    speakers: Speaker[];
-  }) => Promise<void>;
+  onSave: (
+    scheduleId: number,
+    data: {
+      startDateTime: string;
+      endDateTime: string;
+      translations: Translation[];
+      speakers: Speaker[];
+    }
+  ) => Promise<void>;
 }
 
-function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditModalProps) {
-  const [startDateTime, setStartDateTime] = useState(schedule.startDateTime.slice(0, 16));
-  const [endDateTime, setEndDateTime] = useState(schedule.endDateTime.slice(0, 16));
+function ScheduleEditModal({
+  isOpen,
+  onClose,
+  schedule,
+  onSave,
+}: ScheduleEditModalProps) {
+  const [startDateTime, setStartDateTime] = useState(
+    schedule.startDateTime.slice(0, 16)
+  );
+  const [endDateTime, setEndDateTime] = useState(
+    schedule.endDateTime.slice(0, 16)
+  );
   const [translations, setTranslations] = useState<Translation[]>([
     {
-      language: 'pt-BR',
-      title: schedule.translations['pt-BR'].title,
-      description: schedule.translations['pt-BR'].description
+      language: "pt-BR",
+      title: schedule.translations["pt-BR"].title,
+      description: schedule.translations["pt-BR"].description,
     },
     {
-      language: 'es-ES',
-      title: schedule.translations['es-ES'].title,
-      description: schedule.translations['es-ES'].description
-    }
+      language: "es-ES",
+      title: schedule.translations["es-ES"].title,
+      description: schedule.translations["es-ES"].description,
+    },
   ]);
   const [speakers, setSpeakers] = useState<Speaker[]>(schedule.speakers);
   const [saving, setSaving] = useState(false);
@@ -67,44 +79,63 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
     setSaving(true);
 
     try {
+      const adjustTimeZone = (dateTimeStr: string) => {
+        const date = new Date(dateTimeStr);
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - userTimezoneOffset).toISOString();
+      };
+
       await onSave(schedule.id, {
-        startDateTime: new Date(startDateTime).toISOString(),
-        endDateTime: new Date(endDateTime).toISOString(),
+        startDateTime: adjustTimeZone(startDateTime),
+        endDateTime: adjustTimeZone(endDateTime),
         translations,
-        speakers
+        speakers,
       });
       onClose();
     } catch (error) {
-      console.error('Error saving schedule:', error);
+      console.error("Error saving schedule:", error);
     } finally {
       setSaving(false);
     }
   };
 
   const handleAddSpeaker = () => {
-    setSpeakers([...speakers, { name: '', position: '' }]);
+    setSpeakers([...speakers, { name: "", position: "" }]);
   };
 
   const handleRemoveSpeaker = (index: number) => {
     setSpeakers(speakers.filter((_, i) => i !== index));
   };
 
-  const handleSpeakerChange = (index: number, field: keyof Speaker, value: string) => {
+  const handleSpeakerChange = (
+    index: number,
+    field: keyof Speaker,
+    value: string
+  ) => {
     const newSpeakers = [...speakers];
     newSpeakers[index] = { ...newSpeakers[index], [field]: value };
     setSpeakers(newSpeakers);
   };
 
-  const handleTranslationChange = (language: string, field: 'title' | 'description', value: string) => {
-    setTranslations(translations.map(t => 
-      t.language === language ? { ...t, [field]: value } : t
-    ));
+  const handleTranslationChange = (
+    language: string,
+    field: "title" | "description",
+    value: string
+  ) => {
+    setTranslations(
+      translations.map((t) =>
+        t.language === language ? { ...t, [field]: value } : t
+      )
+    );
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={onClose} />
-      
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={onClose}
+      />
+
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl">
           <div className="flex items-center justify-between p-4 border-b">
@@ -152,7 +183,7 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
               {/* Translations */}
               <div className="space-y-6 mb-6">
                 <h4 className="font-medium text-gray-900">Traduções</h4>
-                
+
                 {/* Portuguese */}
                 <div className="border rounded-lg p-4">
                   <h5 className="font-medium text-gray-700 mb-4">Português</h5>
@@ -163,8 +194,17 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
                       </label>
                       <input
                         type="text"
-                        value={translations.find(t => t.language === 'pt-BR')?.title || ''}
-                        onChange={(e) => handleTranslationChange('pt-BR', 'title', e.target.value)}
+                        value={
+                          translations.find((t) => t.language === "pt-BR")
+                            ?.title || ""
+                        }
+                        onChange={(e) =>
+                          handleTranslationChange(
+                            "pt-BR",
+                            "title",
+                            e.target.value
+                          )
+                        }
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         required
                       />
@@ -174,8 +214,17 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
                         Descrição
                       </label>
                       <textarea
-                        value={translations.find(t => t.language === 'pt-BR')?.description || ''}
-                        onChange={(e) => handleTranslationChange('pt-BR', 'description', e.target.value)}
+                        value={
+                          translations.find((t) => t.language === "pt-BR")
+                            ?.description || ""
+                        }
+                        onChange={(e) =>
+                          handleTranslationChange(
+                            "pt-BR",
+                            "description",
+                            e.target.value
+                          )
+                        }
                         rows={3}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         required
@@ -194,8 +243,17 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
                       </label>
                       <input
                         type="text"
-                        value={translations.find(t => t.language === 'es-ES')?.title || ''}
-                        onChange={(e) => handleTranslationChange('es-ES', 'title', e.target.value)}
+                        value={
+                          translations.find((t) => t.language === "es-ES")
+                            ?.title || ""
+                        }
+                        onChange={(e) =>
+                          handleTranslationChange(
+                            "es-ES",
+                            "title",
+                            e.target.value
+                          )
+                        }
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         required
                       />
@@ -205,8 +263,17 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
                         Descripción
                       </label>
                       <textarea
-                        value={translations.find(t => t.language === 'es-ES')?.description || ''}
-                        onChange={(e) => handleTranslationChange('es-ES', 'description', e.target.value)}
+                        value={
+                          translations.find((t) => t.language === "es-ES")
+                            ?.description || ""
+                        }
+                        onChange={(e) =>
+                          handleTranslationChange(
+                            "es-ES",
+                            "description",
+                            e.target.value
+                          )
+                        }
                         rows={3}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         required
@@ -229,7 +296,7 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
                     Adicionar
                   </button>
                 </div>
-                
+
                 <div className="space-y-4">
                   {speakers.map((speaker, index) => (
                     <div key={index} className="flex items-start space-x-4">
@@ -238,7 +305,9 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
                           type="text"
                           placeholder="Nome"
                           value={speaker.name}
-                          onChange={(e) => handleSpeakerChange(index, 'name', e.target.value)}
+                          onChange={(e) =>
+                            handleSpeakerChange(index, "name", e.target.value)
+                          }
                           className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                           required
                         />
@@ -248,7 +317,13 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
                           type="text"
                           placeholder="Cargo"
                           value={speaker.position}
-                          onChange={(e) => handleSpeakerChange(index, 'position', e.target.value)}
+                          onChange={(e) =>
+                            handleSpeakerChange(
+                              index,
+                              "position",
+                              e.target.value
+                            )
+                          }
                           className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                           required
                         />
@@ -272,7 +347,7 @@ function ScheduleEditModal({ isOpen, onClose, schedule, onSave }: ScheduleEditMo
                 disabled={saving}
                 className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? 'Salvando...' : 'Salvar'}
+                {saving ? "Salvando..." : "Salvar"}
               </button>
               <button
                 type="button"

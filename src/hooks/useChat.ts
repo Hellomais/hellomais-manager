@@ -48,7 +48,7 @@ export function useChat(roomId: number, token: string): ChatHook {
   // Fetch messages
   const fetchMessages = useCallback(async () => {
     try {
-      const response = await fetch(`https://api.hellomais.com.br/chat/rooms/${roomId}/messages?limit=20000`, {
+      const response = await fetch(`https://api.hellomais.com.br/chat/rooms/${roomId}/messages?limit=50`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'accept': 'application/json'
@@ -70,8 +70,20 @@ export function useChat(roomId: number, token: string): ChatHook {
   }, [roomId, token]);
 
   // Handle new message
-  const handleNewMessage = useCallback((data: { message: Message }) => {
-    setMessages(prev => [...prev, data.message]);
+  const handleNewMessage = useCallback((data: Message) => {
+    console.log('Nova mensagem recebida:', data);
+
+    setMessages(prev => {
+      // Verifica se a mensagem já existe no array para evitar duplicatas
+      const messageExists = prev.some(msg => msg.id === data.id);
+      if (messageExists) return prev;
+
+      // Adiciona apenas se for uma mensagem válida
+      if (data.id && data.content) {
+        return [...prev, data];
+      }
+      return prev;
+    });
   }, []);
 
   // Handle message deleted
@@ -80,22 +92,46 @@ export function useChat(roomId: number, token: string): ChatHook {
     setPinnedMessages(prev => prev.filter(msg => msg.id !== data.messageId));
   }, []);
 
-  // Handle message pinned
-  const handleMessagePinned = useCallback((data: { message: Message }) => {
-    setPinnedMessages(prev => [...prev, data.message]);
+  const handleMessagePinned = useCallback((data: { message?: Message } | Message) => {
+    console.log('Pin data received:', data);
+
+    // Pega a mensagem correta independente da estrutura
+    const message = (data as { message?: Message }).message || data as Message;
+
+    if (!message || !message.id) {
+      console.error('Invalid message data received:', data);
+      return;
+    }
+
+    setPinnedMessages(prev => {
+      const messageExists = prev.some(msg => msg.id === message.id);
+      if (messageExists) return prev;
+      return [...prev, message];
+    });
+
     setMessages(prev =>
       prev.map(msg =>
-        msg.id === data.message.id ? { ...msg, isPinned: true } : msg
+        msg.id === message.id ? { ...msg, isPinned: true } : msg
       )
     );
   }, []);
 
   // Handle message unpinned
-  const handleMessageUnpinned = useCallback((data: { message: Message }) => {
-    setPinnedMessages(prev => prev.filter(msg => msg.id !== data.message.id));
+  const handleMessageUnpinned = useCallback((data: { message?: Message } | Message) => {
+    console.log('Unpin data received:', data);
+
+    // Pega a mensagem correta independente da estrutura
+    const message = (data as { message?: Message }).message || data as Message;
+
+    if (!message || !message.id) {
+      console.error('Invalid message data received:', data);
+      return;
+    }
+
+    setPinnedMessages(prev => prev.filter(msg => msg.id !== message.id));
     setMessages(prev =>
       prev.map(msg =>
-        msg.id === data.message.id ? { ...msg, isPinned: false } : msg
+        msg.id === message.id ? { ...msg, isPinned: false } : msg
       )
     );
   }, []);
@@ -123,7 +159,7 @@ export function useChat(roomId: number, token: string): ChatHook {
     // Initialize Pusher
     const pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY, {
       cluster: import.meta.env.VITE_PUSHER_CLUSTER,
-      authEndpoint: 'https://api.hellomais.com.br/chat/pusher/auth',
+      authEndpoint: 'http://localhost:3000/chat/pusher/auth',
       auth: {
         headers: {
           Authorization: `Bearer ${token}`
@@ -133,7 +169,20 @@ export function useChat(roomId: number, token: string): ChatHook {
 
     pusherRef.current = pusher;
     const channelName = `presence-room-${roomId}`;
-    channelRef.current = pusher.subscribe(channelName);
+    const channel = pusher.subscribe(channelName);
+
+    channelRef.current = channel;
+
+    // Adicione logs para debug
+    channel.bind('new-message', (data: any) => {
+      console.log('Evento new-message recebido:', data);
+      handleNewMessage(data);
+    });
+
+    // Também vamos verificar se o canal está conectado corretamente
+    channel.bind('pusher:subscription_succeeded', () => {
+      console.log('Canal conectado com sucesso');
+    });
 
     // Bind events
     channelRef.current.bind('new-message', handleNewMessage);

@@ -48,20 +48,27 @@ export function useRoomUsers(roomId: number, token: string, eventId: number): Ro
     events: [
       {
         eventName: 'pusher:subscription_succeeded',
-        onMessage: (data) => {
-          // Atualiza o contador de usuários online com base nos membros do canal
-          setOnlineCount(Object.keys(data.members || {}).length);
+        onMessage: (data: {
+          members: Record<string, { role: string; email: string }>;
+          count: number;
+          myID: string;
+          me: { id: string; info: { role: string; email: string } };
+        }) => {
+          console.log('Members data:', data);
+          setOnlineCount(data.count);
         }
       },
       {
         eventName: 'pusher:member_added',
-        onMessage: () => {
+        onMessage: (member: { id: string; info: { role: string; email: string } }) => {
+          console.log('Member added:', member);
           setOnlineCount(prev => prev + 1);
         }
       },
       {
         eventName: 'pusher:member_removed',
-        onMessage: () => {
+        onMessage: (member: { id: string; info: { role: string; email: string } }) => {
+          console.log('Member removed:', member);
           setOnlineCount(prev => Math.max(0, prev - 1));
         }
       }
@@ -74,8 +81,7 @@ export function useRoomUsers(roomId: number, token: string, eventId: number): Ro
 
     try {
       const response = await fetch(
-        `https://api.hellomais.com.br/metrics/room/${roomId}/users?page=${currentPage}&limit=20${
-          searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ''
+        `https://api.hellomais.com.br/metrics/room/${roomId}/users?page=${currentPage}&limit=20${searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ''
         }`,
         {
           headers: {
@@ -102,11 +108,6 @@ export function useRoomUsers(roomId: number, token: string, eventId: number): Ro
 
   useEffect(() => {
     fetchUsers();
-    
-    // Atualiza os dados a cada 30 segundos
-    const interval = setInterval(fetchUsers, 30000);
-    
-    return () => clearInterval(interval);
   }, [fetchUsers]);
 
   return {
