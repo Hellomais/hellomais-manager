@@ -54,21 +54,18 @@ export function useRoomUsers(roomId: number, token: string, eventId: number): Ro
           myID: string;
           me: { id: string; info: { role: string; email: string } };
         }) => {
-          console.log('Members data:', data);
           setOnlineCount(data.count);
         }
       },
       {
         eventName: 'pusher:member_added',
         onMessage: (member: { id: string; info: { role: string; email: string } }) => {
-          console.log('Member added:', member);
           setOnlineCount(prev => prev + 1);
         }
       },
       {
         eventName: 'pusher:member_removed',
         onMessage: (member: { id: string; info: { role: string; email: string } }) => {
-          console.log('Member removed:', member);
           setOnlineCount(prev => Math.max(0, prev - 1));
         }
       }

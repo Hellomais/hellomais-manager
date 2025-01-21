@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
-import { Search, Send, ArrowLeft, Pin, Trash2, MessageCircle as MessageCirclePinned, Download } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useChat } from '../../hooks/useChat';
-import { useRoomUsers } from '../../hooks/useRoomUsers';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import {
+  Search,
+  Send,
+  ArrowLeft,
+  Pin,
+  Trash2,
+  MessageCircle as MessageCirclePinned,
+  Download,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useChat } from "../../hooks/useChat";
+import { useRoomUsers } from "../../hooks/useRoomUsers";
 
 interface ModerationPageProps {
   roomId: number;
@@ -31,25 +39,33 @@ interface ChatMessage {
 
 function ModerationPage({ roomId, onClose }: ModerationPageProps) {
   const navigate = useNavigate();
-  const token = localStorage.getItem('token') || '';
-  const [searchTerm, setSearchTerm] = useState('');
+  const token = localStorage.getItem("token") || "";
+  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Get eventId from localStorage with proper type checking
-  const selectedEvent = JSON.parse(localStorage.getItem('selectedEvent') || '{}');
+  const selectedEvent = JSON.parse(
+    localStorage.getItem("selectedEvent") || "{}"
+  );
   const eventId = selectedEvent?.id;
 
-  // Only proceed if we have both roomId and eventId
+  const scrollToBottom = useCallback(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop =
+        messagesContainerRef.current.scrollHeight;
+    }
+  }, []);
+
   if (!roomId || !eventId) {
     return (
       <div className="fixed inset-0 bg-gray-100 z-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600">Informações da sala não disponíveis</p>
           <button
-            onClick={() => navigate('/rooms')}
+            onClick={() => navigate("/rooms")}
             className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -68,7 +84,7 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
     sendMessage,
     pinMessage,
     unpinMessage,
-    deleteMessage
+    deleteMessage,
   } = useChat(roomId, token);
 
   const {
@@ -80,8 +96,16 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
     error: usersError,
     refresh: refreshUsers,
     setPage,
-    setSearchTerm: setUsersSearchTerm
+    setSearchTerm: setUsersSearchTerm,
   } = useRoomUsers(roomId, token, eventId);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [pinnedMessages, scrollToBottom]);
 
   const handleSearch = () => {
     setUsersSearchTerm(searchTerm);
@@ -91,28 +115,31 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
   const handleExport = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch(`https://api.hellomais.com.br/metrics/room/${roomId}/users/export`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'accept': '*/*'
+      const response = await fetch(
+        `https://api.hellomais.com.br/metrics/room/${roomId}/users/export`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            accept: "*/*",
+          },
         }
-      });
+      );
 
       if (!response.ok) {
-        throw new Error('Falha ao gerar relatório');
+        throw new Error("Falha ao gerar relatório");
       }
 
       const downloadUrl = await response.text();
-      
-      const link = document.createElement('a');
+
+      const link = document.createElement("a");
       link.href = downloadUrl;
-      link.setAttribute('download', `relatorio-sala-${roomId}.xlsx`);
+      link.setAttribute("download", `relatorio-sala-${roomId}.xlsx`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      console.error('Erro ao baixar relatório:', error);
-      alert('Erro ao gerar relatório. Por favor, tente novamente.');
+      console.error("Erro ao baixar relatório:", error);
+      alert("Erro ao gerar relatório. Por favor, tente novamente.");
     } finally {
       setIsDownloading(false);
     }
@@ -121,74 +148,90 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || isSendingMessage) return;
-    
+
     setIsSendingMessage(true);
     try {
       await sendMessage(newMessage);
-      setNewMessage('');
+      setNewMessage("");
     } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Erro ao enviar mensagem. Por favor, tente novamente.');
+      console.error("Error sending message:", error);
+      alert("Erro ao enviar mensagem. Por favor, tente novamente.");
     } finally {
       setIsSendingMessage(false);
     }
   };
 
   const handleBack = () => {
-    navigate('/rooms');
+    navigate("/rooms");
     onClose();
   };
 
-  const MessageComponent = ({ message, isPinnedSection = false }: { message: ChatMessage, isPinnedSection?: boolean }) => {
-    if (!message?.id || !message?.user) return null; // Skip rendering if message or user is invalid
+  const MessageComponent = ({
+    message,
+    isPinnedSection = false,
+  }: {
+    message: ChatMessage;
+    isPinnedSection?: boolean;
+  }) => {
+    if (!message?.id || !message?.user) return null;
 
     return (
-      <div 
+      <div
         className={`flex flex-col p-3 rounded-lg ${
-          message.user.role === 'manager' 
-            ? 'bg-blue-50 border border-blue-100' 
+          message.user.role === "manager"
+            ? "bg-blue-50 border border-blue-100"
             : isPinnedSection
-            ? 'bg-yellow-50 border border-yellow-100'
-            : 'bg-gray-800'
+            ? "bg-yellow-50 border border-yellow-100"
+            : "bg-gray-800"
         }`}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className={`text-sm ${
-              message.user.role === 'manager' 
-                ? 'text-blue-600 font-medium' 
-                : isPinnedSection
-                ? 'text-yellow-700'
-                : 'text-gray-400'
-            }`}>
+            <span
+              className={`text-sm ${
+                message.user.role === "manager"
+                  ? "text-blue-600 font-medium"
+                  : isPinnedSection
+                  ? "text-yellow-700"
+                  : "text-gray-400"
+              }`}
+            >
               {message.user.name}
             </span>
-            <span className={`text-xs ${
-              isPinnedSection ? 'text-yellow-600' : 'text-gray-500'
-            }`}>
+            <span
+              className={`text-xs ${
+                isPinnedSection ? "text-yellow-600" : "text-gray-500"
+              }`}
+            >
               {message.createdAt}
             </span>
           </div>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => message.isPinned ? unpinMessage(message.id) : pinMessage(message.id)}
+              onClick={() =>
+                message.isPinned
+                  ? unpinMessage(message.id)
+                  : pinMessage(message.id)
+              }
               className={`text-sm ${
-                message.isPinned 
-                  ? 'text-yellow-500 hover:text-yellow-600' 
-                  : message.user.role === 'manager'
-                    ? 'text-blue-600 hover:text-blue-700'
-                    : 'text-gray-400 hover:text-gray-300'
+                message.isPinned
+                  ? "text-yellow-500 hover:text-yellow-600"
+                  : message.user.role === "manager"
+                  ? "text-blue-600 hover:text-blue-700"
+                  : "text-gray-400 hover:text-gray-300"
               }`}
-              title={message.isPinned ? 'Desafixar' : 'Fixar'}
+              title={message.isPinned ? "Desafixar" : "Fixar"}
             >
-              <Pin className={`h-4 w-4 ${message.isPinned ? 'fill-current' : ''}`} />
+              <Pin
+                className={`h-4 w-4 ${message.isPinned ? "fill-current" : ""}`}
+              />
             </button>
             <button
               onClick={() => deleteMessage(message.id)}
               className={`text-sm ${
-                message.user.role === 'manager'
-                  ? 'text-red-600 hover:text-red-700'
-                  : 'text-gray-400 hover:text-red-300'
+                message.user.role === "manager"
+                  ? "text-red-600 hover:text-red-700"
+                  : "text-gray-400 hover:text-red-300"
               }`}
               title="Deletar"
             >
@@ -196,13 +239,15 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
             </button>
           </div>
         </div>
-        <p className={`mt-1 ${
-          message.user.role === 'manager'
-            ? 'text-gray-800'
-            : isPinnedSection
-            ? 'text-yellow-900'
-            : 'text-gray-100'
-        }`}>
+        <p
+          className={`mt-1 ${
+            message.user.role === "manager"
+              ? "text-gray-800"
+              : isPinnedSection
+              ? "text-yellow-900"
+              : "text-gray-100"
+          }`}
+        >
           {message.content}
         </p>
       </div>
@@ -229,7 +274,7 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
               </h1>
             </div>
           </div>
-          
+
           {/* Search and Actions */}
           <div className="mt-4 flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -250,7 +295,7 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
                 Buscar
               </button>
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <button
                 onClick={handleExport}
@@ -258,7 +303,7 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
                 className="inline-flex items-center px-4 py-2 bg-cyan-400 text-white rounded-md hover:bg-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="h-4 w-4 mr-2" />
-                {isDownloading ? 'Baixando...' : 'Baixar Excel'}
+                {isDownloading ? "Baixando..." : "Baixar Excel"}
               </button>
               <button
                 onClick={refreshUsers}
@@ -290,19 +335,28 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
               <tbody className="bg-white divide-y divide-gray-200">
                 {usersLoading ? (
                   <tr>
-                    <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
+                    <td
+                      colSpan={3}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
                       Carregando...
                     </td>
                   </tr>
                 ) : usersError ? (
                   <tr>
-                    <td colSpan={3} className="px-6 py-4 text-center text-red-500">
+                    <td
+                      colSpan={3}
+                      className="px-6 py-4 text-center text-red-500"
+                    >
                       {usersError}
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
+                    <td
+                      colSpan={3}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
                       Nenhum usuário encontrado
                     </td>
                   </tr>
@@ -328,7 +382,7 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination */}
           <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
             <div className="flex items-center space-x-2">
@@ -376,10 +430,13 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div
+          className="flex-1 overflow-y-auto p-4 space-y-4 pt-0"
+          ref={messagesContainerRef}
+        >
           {/* Pinned Messages Section */}
           {pinnedMessages && pinnedMessages.length > 0 && (
-            <div className="mb-6">
+            <div className="sticky top-0 bg-gray-900 pt-2 pb-4 z-10">
               <div className="flex items-center space-x-2 mb-3">
                 <MessageCirclePinned className="h-5 w-5 text-yellow-500" />
                 <h3 className="text-sm font-medium text-yellow-500">
@@ -387,15 +444,15 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
                 </h3>
               </div>
               <div className="space-y-3">
-                {pinnedMessages.map((message) => (
+                {pinnedMessages.map((message) =>
                   message && message.id ? (
-                    <MessageComponent 
-                      key={`pinned-${message.id}`} 
-                      message={message} 
+                    <MessageComponent
+                      key={`pinned-${message.id}`}
+                      message={message}
                       isPinnedSection={true}
                     />
                   ) : null
-                ))}
+                )}
               </div>
               <div className="border-b border-gray-700 my-4" />
             </div>
@@ -403,25 +460,29 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
 
           {/* Regular Messages */}
           {messagesLoading ? (
-            <div className="text-center text-gray-500">Carregando mensagens...</div>
+            <div className="text-center text-gray-500">
+              Carregando mensagens...
+            </div>
           ) : messagesError ? (
             <div className="text-center text-red-500">{messagesError}</div>
           ) : messages && messages.length > 0 ? (
-            messages.map((message) => (
+            messages.map((message) =>
               message && message.id ? (
-                <MessageComponent 
-                  key={message.id} 
-                  message={message}
-                />
+                <MessageComponent key={message.id} message={message} />
               ) : null
-            ))
+            )
           ) : (
-            <div className="text-center text-gray-500">Nenhuma mensagem ainda</div>
+            <div className="text-center text-gray-500">
+              Nenhuma mensagem ainda
+            </div>
           )}
         </div>
 
         {/* Message Input */}
-        <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-800">
+        <form
+          onSubmit={handleSendMessage}
+          className="p-4 border-t border-gray-800"
+        >
           <div className="flex items-center space-x-2">
             <input
               type="text"
@@ -435,12 +496,14 @@ function ModerationPage({ roomId, onClose }: ModerationPageProps) {
               type="submit"
               disabled={isSendingMessage}
               className={`p-2 ${
-                isSendingMessage 
-                  ? 'text-gray-500 cursor-not-allowed' 
-                  : 'text-blue-400 hover:text-blue-300'
+                isSendingMessage
+                  ? "text-gray-500 cursor-not-allowed"
+                  : "text-blue-400 hover:text-blue-300"
               }`}
             >
-              <Send className={`h-5 w-5 ${isSendingMessage ? 'animate-pulse' : ''}`} />
+              <Send
+                className={`h-5 w-5 ${isSendingMessage ? "animate-pulse" : ""}`}
+              />
             </button>
           </div>
         </form>

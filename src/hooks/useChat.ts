@@ -71,7 +71,6 @@ export function useChat(roomId: number, token: string): ChatHook {
 
   // Handle new message
   const handleNewMessage = useCallback((data: Message) => {
-    console.log('Nova mensagem recebida:', data);
 
     setMessages(prev => {
       // Verifica se a mensagem já existe no array para evitar duplicatas
@@ -93,32 +92,43 @@ export function useChat(roomId: number, token: string): ChatHook {
   }, []);
 
   const handleMessagePinned = useCallback((data: { message?: Message } | Message) => {
-    console.log('Pin data received:', data);
-
-    // Pega a mensagem correta independente da estrutura
+    // Normaliza o objeto da mensagem
     const message = (data as { message?: Message }).message || data as Message;
 
+    // Verifica se a mensagem é válida
     if (!message || !message.id) {
-      console.error('Invalid message data received:', data);
+      console.error('Mensagem inválida recebida:', data);
       return;
     }
 
+    // Imprime o estado atual das mensagens fixadas
+    console.log('Estado atual das mensagens fixadas:', pinnedMessages);
+
+    // Atualiza as mensagens fixadas
     setPinnedMessages(prev => {
+      // Verifica se a mensagem já está fixada
       const messageExists = prev.some(msg => msg.id === message.id);
-      if (messageExists) return prev;
-      return [...prev, message];
+      if (messageExists) {
+        console.log('Mensagem já está fixada');
+        return prev;
+      }
+
+      // Adiciona a nova mensagem fixada
+      const newPinnedMessages = [...prev, message];
+      console.log('Novas mensagens fixadas:', newPinnedMessages);
+      return newPinnedMessages;
     });
 
+    // Atualiza o estado das mensagens para marcar como fixada
     setMessages(prev =>
       prev.map(msg =>
         msg.id === message.id ? { ...msg, isPinned: true } : msg
       )
     );
-  }, []);
+  }, [pinnedMessages]);
 
   // Handle message unpinned
   const handleMessageUnpinned = useCallback((data: { message?: Message } | Message) => {
-    console.log('Unpin data received:', data);
 
     // Pega a mensagem correta independente da estrutura
     const message = (data as { message?: Message }).message || data as Message;
@@ -175,7 +185,6 @@ export function useChat(roomId: number, token: string): ChatHook {
 
     // Adicione logs para debug
     channel.bind('new-message', (data: any) => {
-      console.log('Evento new-message recebido:', data);
       handleNewMessage(data);
     });
 
