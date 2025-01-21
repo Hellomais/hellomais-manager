@@ -22,7 +22,7 @@ export function usePusher({ key, cluster, channelName, token, events }: PusherCo
     // Removido o check de sessão que estava impedindo a reconexão
     const pusher = new Pusher(key, {
       cluster,
-      authEndpoint: 'http://localhost:3000/chat/pusher/auth',
+      authEndpoint: 'https://api.hellomais.com.br/chat/pusher/auth',
       auth: {
         headers: {
           Authorization: `Bearer ${token}`

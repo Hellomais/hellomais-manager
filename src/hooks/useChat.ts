@@ -159,7 +159,7 @@ export function useChat(roomId: number, token: string): ChatHook {
     // Initialize Pusher
     const pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY, {
       cluster: import.meta.env.VITE_PUSHER_CLUSTER,
-      authEndpoint: 'http://localhost:3000/chat/pusher/auth',
+      authEndpoint: 'https://api.hellomais.com.br/chat/pusher/auth',
       auth: {
         headers: {
           Authorization: `Bearer ${token}`
