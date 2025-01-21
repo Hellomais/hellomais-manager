@@ -71,7 +71,6 @@ export function useChat(roomId: number, token: string): ChatHook {
 
   // Handle new message
   const handleNewMessage = useCallback((data: Message) => {
-
     setMessages(prev => {
       // Verifica se a mensagem já existe no array para evitar duplicatas
       const messageExists = prev.some(msg => msg.id === data.id);
@@ -101,9 +100,6 @@ export function useChat(roomId: number, token: string): ChatHook {
       return;
     }
 
-    // Imprime o estado atual das mensagens fixadas
-    console.log('Estado atual das mensagens fixadas:', pinnedMessages);
-
     // Atualiza as mensagens fixadas
     setPinnedMessages(prev => {
       // Verifica se a mensagem já está fixada
@@ -125,11 +121,9 @@ export function useChat(roomId: number, token: string): ChatHook {
         msg.id === message.id ? { ...msg, isPinned: true } : msg
       )
     );
-  }, [pinnedMessages]);
+  }, []);
 
-  // Handle message unpinned
   const handleMessageUnpinned = useCallback((data: { message?: Message } | Message) => {
-
     // Pega a mensagem correta independente da estrutura
     const message = (data as { message?: Message }).message || data as Message;
 
@@ -146,80 +140,67 @@ export function useChat(roomId: number, token: string): ChatHook {
     );
   }, []);
 
-  // Cleanup Pusher
-  const cleanupPusher = useCallback(() => {
-    if (channelRef.current) {
-      channelRef.current.unbind_all();
-      channelRef.current.unsubscribe();
-    }
-    if (pusherRef.current) {
-      pusherRef.current.disconnect();
-    }
-    pusherRef.current = null;
-    channelRef.current = null;
-  }, []);
-
   // Setup Pusher
   useEffect(() => {
     if (!token || !roomId) return;
 
-    // Cleanup any existing connection
-    cleanupPusher();
+    const initPusher = async () => {
+      try {
+        // Initialize Pusher
+        const pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY, {
+          cluster: import.meta.env.VITE_PUSHER_CLUSTER,
+          authEndpoint: 'https://api.hellomais.com.br/chat/pusher/auth',
+          auth: {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        });
 
-    // Initialize Pusher
-    const pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY, {
-      cluster: import.meta.env.VITE_PUSHER_CLUSTER,
-      authEndpoint: 'https://api.hellomais.com.br/chat/pusher/auth',
-      auth: {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        pusherRef.current = pusher;
+        const channelName = `presence-room-${roomId}`;
+        const channel = pusher.subscribe(channelName);
+
+        channelRef.current = channel;
+
+        // Adicione logs para debug
+        channel.bind('new-message', (data: any) => {
+          handleNewMessage(data);
+        });
+
+        channel.bind('pusher:subscription_succeeded', () => {
+          console.log('Canal conectado com sucesso');
+        });
+
+        // Bind events
+        channelRef.current.bind('new-message', handleNewMessage);
+        channelRef.current.bind('message-deleted', handleMessageDeleted);
+        channelRef.current.bind('message-pinned', handleMessagePinned);
+        channelRef.current.bind('message-unpinned', handleMessageUnpinned);
+
+        // Initial fetch
+        await fetchMessages();
+      } catch (error) {
+        console.error('Erro ao inicializar a conexão Pusher:', error);
+        setError('Erro ao carregar mensagens');
       }
-    });
+    };
 
-    pusherRef.current = pusher;
-    const channelName = `presence-room-${roomId}`;
-    const channel = pusher.subscribe(channelName);
+    initPusher();
 
-    channelRef.current = channel;
-
-    // Adicione logs para debug
-    channel.bind('new-message', (data: any) => {
-      handleNewMessage(data);
-    });
-
-    // Também vamos verificar se o canal está conectado corretamente
-    channel.bind('pusher:subscription_succeeded', () => {
-      console.log('Canal conectado com sucesso');
-    });
-
-    // Bind events
-    channelRef.current.bind('new-message', handleNewMessage);
-    channelRef.current.bind('message-deleted', handleMessageDeleted);
-    channelRef.current.bind('message-pinned', handleMessagePinned);
-    channelRef.current.bind('message-unpinned', handleMessageUnpinned);
-
-    // Initial fetch
-    fetchMessages();
-
-    // Cleanup on unmount or when dependencies change
+    // Cleanup on unmount
     return () => {
-      cleanupPusher();
+      if (channelRef.current) {
+        channelRef.current.unbind_all();
+        channelRef.current.unsubscribe();
+      }
+      if (pusherRef.current) {
+        pusherRef.current.disconnect();
+      }
+      pusherRef.current = null;
+      channelRef.current = null;
     };
-  }, [roomId, token, cleanupPusher, handleNewMessage, handleMessageDeleted, handleMessagePinned, handleMessageUnpinned, fetchMessages]);
-
-  // Handle beforeunload
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      cleanupPusher();
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [cleanupPusher]);
+  }, [roomId, token, handleNewMessage, handleMessageDeleted, handleMessagePinned, handleMessageUnpinned, fetchMessages]);
 
   const sendMessage = async (content: string) => {
     try {

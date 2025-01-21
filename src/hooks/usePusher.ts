@@ -55,15 +55,6 @@ export function usePusher({ key, cluster, channelName, token, events }: PusherCo
 
     pusher.connection.bind('error', (err: any) => { });
 
-    return () => {
-      if (channelRef.current) {
-        channelRef.current.unbind_all();
-        channelRef.current.unsubscribe();
-      }
-      if (pusherRef.current) {
-        pusherRef.current.disconnect();
-      }
-    };
   }, [channelName, cluster, events, key, token]);
 
   return {
